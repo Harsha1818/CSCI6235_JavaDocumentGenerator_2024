@@ -15,7 +15,7 @@ public class JavaUMLParser {
 
     public static void main(String[] args) {
         // Specify the folder containing Java files
-        File folder = new File("/Users/manojsrinivasa/Desktop/Projects/tbel/src");
+        File folder = new File("src/main/java/org/example");
 
         // Output PlantUML diagram to a file
         try (FileWriter writer = new FileWriter("output.puml")) {
@@ -53,6 +53,10 @@ public class JavaUMLParser {
             if (cu != null) {
                 // Find all class declarations
                 List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);
+                // This is for debugging classname only
+                String ans = classes.get(0).getNameAsString();
+                System.out.println("ClassName = "+ans);
+                // End of debugging classname
 
                 // Generate PlantUML from parsed classes
                 for (ClassOrInterfaceDeclaration classDecl : classes) {
