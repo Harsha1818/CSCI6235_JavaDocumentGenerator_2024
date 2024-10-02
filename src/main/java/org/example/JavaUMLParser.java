@@ -57,6 +57,7 @@ public class JavaUMLParser {
                 String ans = classes.get(0).getNameAsString();
                 System.out.println("ClassName = "+ans);
                 // End of debugging classname
+
                 // Generate PlantUML from parsed classes
                 for (ClassOrInterfaceDeclaration classDecl : classes) {
                     generatePlantUMLForClass(classDecl, writer);
