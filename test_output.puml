@@ -1,0 +1,5 @@
+class Animal {
+    + name : String
+    + sound() : void
+    + eat() : void
+}
