@@ -1,3 +1,5 @@
+package org.example;
+
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -9,20 +11,26 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class JavaUMLParser {
 
-    public static void main(String[] args) {
+
+    public static void main(String[] args) throws IOException {
+        List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
         // Specify the folder containing Java files
         File folder = new File("src/main/java/org/example");
+        parseFolder(folder, classList);
 
         // Output PlantUML diagram to a file
         try (FileWriter writer = new FileWriter("output.puml")) {
             writer.write("@startuml\n");
 
-            // Recursively parse the folder and generate PlantUML
-            parseFolder(folder, writer);
+            // Generate PlantUML from parsed classes
+            for (ClassOrInterfaceDeclaration classDecl : classList) {
+                generatePlantUMLForClass(classDecl, writer);
+            }
 
             writer.write("@enduml\n");
         } catch (IOException e) {
@@ -30,21 +38,26 @@ public class JavaUMLParser {
         }
     }
 
-    public static void parseFolder(File folder, FileWriter writer) throws IOException {
+    public static void parseFolder(File folder,List<ClassOrInterfaceDeclaration> classList) throws IOException {
         File[] files = folder.listFiles();
 
+        List<ClassOrInterfaceDeclaration> parsedClasses = new ArrayList<>();
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory()) {
-                    parseFolder(file, writer);  // Recursively parse subfolders
+                    parseFolder(file,classList);  // Recursively parse subfolders
                 } else if (file.getName().endsWith(".java")) {
-                    parseJavaFile(file, writer);  // Parse individual Java files
+                    parsedClasses = parseJavaFile(file);
+                    for (ClassOrInterfaceDeclaration classd : parsedClasses)
+                    {
+                classList.add(classd);
+                    }
                 }
             }
         }
     }
 
-    public static void parseJavaFile(File javaFile, FileWriter writer) throws IOException {
+    public static List<ClassOrInterfaceDeclaration> parseJavaFile(File javaFile) throws IOException {
         try (FileInputStream fis = new FileInputStream(javaFile)) {
             // Create an instance of JavaParser
             JavaParser javaParser = new JavaParser();
@@ -53,20 +66,16 @@ public class JavaUMLParser {
             if (cu != null) {
                 // Find all class declarations
                 List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);
-                // This is for debugging classname only
-                String ans = classes.get(0).getNameAsString();
-                System.out.println("ClassName = "+ans);
-                // End of debugging classname
+                return classes;
 
-                // Generate PlantUML from parsed classes
-                for (ClassOrInterfaceDeclaration classDecl : classes) {
-                    generatePlantUMLForClass(classDecl, writer);
-                }
             }
+            else
+                return (null);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return (null);
     }
 
     /*
