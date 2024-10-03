@@ -17,11 +17,10 @@ import java.util.List;
 
 public class JavaUMLParser {
 
-
     public static void main(String[] args) throws IOException {
         List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
         // Specify the folder containing Java files
-        File folder = new File("/Users/sarvanthvedula/Documents/3rd sem MS/component based/project/CSCI6235_JavaDocumentGenerator_2024/src/test/java/org/example/TestFolder");
+        File folder = new File("src/test/java/org/example/TestFolder");
         parseFolder(folder, classList);
 
         // Output PlantUML diagram to a file
@@ -39,19 +38,18 @@ public class JavaUMLParser {
         }
     }
 
-    public static void parseFolder(File folder,List<ClassOrInterfaceDeclaration> classList) throws IOException {
+    public static void parseFolder(File folder, List<ClassOrInterfaceDeclaration> classList) throws IOException {
         File[] files = folder.listFiles();
 
         List<ClassOrInterfaceDeclaration> parsedClasses = new ArrayList<>();
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory()) {
-                    parseFolder(file,classList);  // Recursively parse subfolders
+                    parseFolder(file, classList);  // Recursively parse subfolders
                 } else if (file.getName().endsWith(".java")) {
                     parsedClasses = parseJavaFile(file);
-                    for (ClassOrInterfaceDeclaration classd : parsedClasses)
-                    {
-                classList.add(classd);
+                    for (ClassOrInterfaceDeclaration classd : parsedClasses) {
+                        classList.add(classd);
                     }
                 }
             }
@@ -69,10 +67,9 @@ public class JavaUMLParser {
                 List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);
                 return classes;
 
-            }
-            else
+            } else {
                 return (null);
-
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -80,14 +77,14 @@ public class JavaUMLParser {
     }
 
     /*
-    generatePlantUMLForClass generates Plantuml readable file for the parsed data in .puml extension
-     */
+    generatePlantUMLForClass generates PlantUML readable file for the parsed data in .puml extension
+    */
     public static void generatePlantUMLForClass(ClassOrInterfaceDeclaration classDecl, FileWriter writer) throws IOException {
         // Class name
         String className = classDecl.getNameAsString();
 
-        // Check if the class is an interface
-        String classType = classDecl.isInterface() ? "interface" : "class";
+        // Check if the class is an interface or abstract
+        String classType = classDecl.isInterface() ? "interface" : (classDecl.isAbstract() ? "abstract class" : "class");
         writer.write(classType + " " + className + " {\n");
 
         // Print class annotations
@@ -108,6 +105,15 @@ public class JavaUMLParser {
             String fieldName = field.getVariables().get(0).getNameAsString();
             String fieldType = field.getCommonType().asString();
             writer.write("    + " + fieldName + " : " + fieldType + "\n");
+
+            // Check for associations, compositions, and aggregations
+            writer.write("    " + className + " --> " + fieldType + "\n"); // Association
+            // Uncomment below if you want to differentiate between associations, compositions, or aggregations based on field names or types
+            // if (/* condition for composition */) {
+            //     writer.write("    " + className + " *-- " + fieldType + "\n"); // Composition
+            // } else if (/* condition for aggregation */) {
+            //     writer.write("    " + className + " o-- " + fieldType + "\n"); // Aggregation
+            // }
         }
 
         // Methods
@@ -119,14 +125,17 @@ public class JavaUMLParser {
             });
             String methodName = method.getNameAsString();
             String returnType = method.getType().asString();
-            writer.write("    + " + annotations.toString().trim() +" "+ methodName + "() : " + returnType + "\n");
-            // Print parameter annotations
+            writer.write("    + " + annotations.toString().trim() + " " + methodName + "() : " + returnType + "\n");
+
+            // Print parameter annotations and types
             for (Parameter parameter : method.getParameters()) {
                 if (!parameter.getAnnotations().isEmpty()) {
                     for (var annotation : parameter.getAnnotations()) {
                         writer.write("    @" + annotation.getNameAsString() + " " + parameter.getNameAsString() + "\n");
                     }
                 }
+                String paramType = parameter.getType().asString();
+                writer.write("    + " + parameter.getNameAsString() + " : " + paramType + "\n");
             }
         }
 
@@ -135,10 +144,10 @@ public class JavaUMLParser {
 
         // Handle inheritance and implementation (extends, implements)
         for (ClassOrInterfaceType extendedClass : classDecl.getExtendedTypes()) {
-            writer.write(className + " <|-- " + extendedClass.getNameAsString() + "\n");
+            writer.write(className + " <|-- " + extendedClass.getNameAsString() + "\n"); // Inheritance
         }
         for (ClassOrInterfaceType implementedInterface : classDecl.getImplementedTypes()) {
-            writer.write(className + " <|.. " + implementedInterface.getNameAsString() + "\n");
+            writer.write(className + " <|.. " + implementedInterface.getNameAsString() + "\n"); // Realization
         }
     }
 }
