@@ -88,14 +88,15 @@
                 <groupId>com.github.davidmoten</groupId>
                 <artifactId>plantuml-maven-plugin</artifactId>
                 <version>0.2.12</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
-                    <source>
-                        <dependency>
-                            <groupId>net.sourceforge.plantuml</groupId>
-                            <artifactId>plantuml</artifactId>
-                            <version>1.2024.4</version>
-                        </dependency>
-                    </source>
+                    <!-- Additional configuration if needed -->
                 </configuration>
             </plugin>
         </plugins>

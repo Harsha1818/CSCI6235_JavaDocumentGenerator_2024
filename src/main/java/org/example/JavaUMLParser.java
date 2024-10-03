@@ -5,6 +5,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 
 import java.io.File;
@@ -20,7 +21,7 @@ public class JavaUMLParser {
     public static void main(String[] args) throws IOException {
         List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
         // Specify the folder containing Java files
-        File folder = new File("src/main/java/org/example");
+        File folder = new File("/Users/sarvanthvedula/Documents/3rd sem MS/component based/project/CSCI6235_JavaDocumentGenerator_2024/src/test/java/org/example/TestFolder");
         parseFolder(folder, classList);
 
         // Output PlantUML diagram to a file
@@ -79,7 +80,7 @@ public class JavaUMLParser {
     }
 
     /*
-    generatePlantUMLForClass generates Pantuml readable file for the parsed data in .puml extension
+    generatePlantUMLForClass generates Plantuml readable file for the parsed data in .puml extension
      */
     public static void generatePlantUMLForClass(ClassOrInterfaceDeclaration classDecl, FileWriter writer) throws IOException {
         // Class name
@@ -89,8 +90,21 @@ public class JavaUMLParser {
         String classType = classDecl.isInterface() ? "interface" : "class";
         writer.write(classType + " " + className + " {\n");
 
+        // Print class annotations
+        if (!classDecl.getAnnotations().isEmpty()) {
+            for (var annotation : classDecl.getAnnotations()) {
+                writer.write("    @" + annotation.getNameAsString() + "\n");
+            }
+        }
+
         // Fields
         for (FieldDeclaration field : classDecl.getFields()) {
+            // Print field annotations
+            if (!field.getAnnotations().isEmpty()) {
+                for (var annotation : field.getAnnotations()) {
+                    writer.write("    @" + annotation.getNameAsString() + "\n");
+                }
+            }
             String fieldName = field.getVariables().get(0).getNameAsString();
             String fieldType = field.getCommonType().asString();
             writer.write("    + " + fieldName + " : " + fieldType + "\n");
@@ -98,9 +112,22 @@ public class JavaUMLParser {
 
         // Methods
         for (MethodDeclaration method : classDecl.getMethods()) {
+            // Print method annotations
+            StringBuilder annotations = new StringBuilder();
+            method.getAnnotations().forEach(annotation -> {
+                annotations.append("@" + annotation.getNameAsString() + " ");
+            });
             String methodName = method.getNameAsString();
             String returnType = method.getType().asString();
-            writer.write("    + " + methodName + "() : " + returnType + "\n");
+            writer.write("    + " + annotations.toString().trim() +" "+ methodName + "() : " + returnType + "\n");
+            // Print parameter annotations
+            for (Parameter parameter : method.getParameters()) {
+                if (!parameter.getAnnotations().isEmpty()) {
+                    for (var annotation : parameter.getAnnotations()) {
+                        writer.write("    @" + annotation.getNameAsString() + " " + parameter.getNameAsString() + "\n");
+                    }
+                }
+            }
         }
 
         // Close class/interface definition

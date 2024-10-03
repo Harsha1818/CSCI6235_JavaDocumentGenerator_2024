@@ -1,0 +1,42 @@
+@startuml
+class PetOwner {
+    + ownerName : String
+    + pet : Animal
+    +  getOwnerName() : String
+    +  setOwnerName() : void
+    +  getPet() : Animal
+    +  setPet() : void
+    +  showPetInfo() : void
+}
+class Main {
+    +  main() : void
+}
+class Manoj {
+    +  main() : void
+    + @Deprecated testAnnotation() : void
+}
+class A {
+    + id : int
+    +  print() : void
+}
+class B {
+    +  printDetails() : void
+}
+B <|-- A
+class Cat {
+    + @Override sound() : void
+}
+Cat <|-- Animal
+class Dog {
+    + breed : String
+    + @Override sound() : void
+    +  play() : void
+    +  play() : void
+}
+Dog <|-- Animal
+class Animal {
+    + name : String
+    +  sound() : void
+    +  eat() : void
+}
+@enduml
