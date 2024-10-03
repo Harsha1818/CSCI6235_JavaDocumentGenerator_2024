@@ -1,6 +1,6 @@
 package org.example.TestFolder;
 
-public class PetOwner {
+public class PetOwner implements OwnerActions {
     private String ownerName;
     private Animal pet;
 
@@ -31,8 +31,17 @@ public class PetOwner {
         this.pet = pet;
     }
 
+    // Implementation of the interface method: showPetInfo
+    @Override
     public void showPetInfo() {
         System.out.println(ownerName + " owns " + pet.name);
         pet.sound();
+    }
+
+    // Implementation of the interface method: feedPet
+    @Override
+    public void feedPet() {
+        System.out.println(ownerName + " is feeding " + pet.name);
+        pet.eat();
     }
 }
