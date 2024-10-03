@@ -1,8 +1,7 @@
-package org.example.TestFolder;
+package org.example;
 
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import org.example.JavaUMLParser;
 import org.junit.Test;
 
 import java.io.File;
@@ -15,10 +14,15 @@ public class MethodTest {
 
     static String firstMethod;
 
+
+
+
     @Test
     public void testMethodParsing() throws IOException {
         // Expected method name in the test file
         String expectedMethod = "sound";
+
+
 
         // Create instance of JavaUMLParser and parse the interface or class file
         JavaUMLParser parser = new JavaUMLParser();
