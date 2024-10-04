@@ -1,17 +1,30 @@
 package org.example.TestFolder;
 
+import java.util.List;
+
 public class PetOwner implements OwnerActions {
     private String ownerName;
-    private Animal pet;
+    private List<Animal> pets;  // Aggregation: PetOwner can have multiple pets
 
-    // Constructor Overloading
-    public PetOwner(String ownerName) {
-        this.ownerName = ownerName;
-    }
+    private PetCollar collar;
 
+    // Constructor Overloading: Single pet version
     public PetOwner(String ownerName, Animal pet) {
         this.ownerName = ownerName;
-        this.pet = pet;
+        this.pets = List.of(pet);  // Convert single pet to a List for consistency
+    }
+
+    // Constructor Overloading: Multiple pets version
+    public PetOwner(String ownerName, List<Animal> pets) {
+        this.ownerName = ownerName;
+        this.pets = pets;  // Aggregation: PetOwner holds a list of pets
+    }
+
+    // Composition example: PetOwner creates a PetCollar, which cannot exist independently
+    public PetOwner(String ownerName, Animal pet, String collarType) {
+        this.ownerName = ownerName;
+        this.pets = List.of(pet);  // Convert single pet to a List for consistency
+        this.collar = new PetCollar(collarType);  // Composition: collar cannot exist outside PetOwner
     }
 
     // Encapsulation (getter and setter methods)
@@ -23,25 +36,29 @@ public class PetOwner implements OwnerActions {
         this.ownerName = ownerName;
     }
 
-    public Animal getPet() {
-        return pet;
+    public List<Animal> getPets() {
+        return pets;
     }
 
-    public void setPet(Animal pet) {
-        this.pet = pet;
+    public void setPets(List<Animal> pets) {
+        this.pets = pets;
     }
 
-    // Implementation of the interface method: showPetInfo
+    // Updated method to show info for multiple pets
     @Override
     public void showPetInfo() {
-        System.out.println(ownerName + " owns " + pet.name);
-        pet.sound();
+        for (Animal pet : pets) {
+            System.out.println(ownerName + " owns " + pet.name);
+            pet.sound();
+        }
     }
 
-    // Implementation of the interface method: feedPet
+    // Updated method to feed multiple pets
     @Override
     public void feedPet() {
-        System.out.println(ownerName + " is feeding " + pet.name);
-        pet.eat();
+        for (Animal pet : pets) {
+            System.out.println(ownerName + " is feeding " + pet.name);
+            pet.eat();
+        }
     }
 }

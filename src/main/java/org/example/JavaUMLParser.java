@@ -5,6 +5,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 
@@ -19,6 +20,7 @@ public class JavaUMLParser {
 
     public static void main(String[] args) throws IOException {
         List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
+
         // Specify the folder containing Java files
         File folder = new File("src/test/java/org/example/TestFolder");
         parseFolder(folder, classList);
@@ -41,16 +43,13 @@ public class JavaUMLParser {
     public static void parseFolder(File folder, List<ClassOrInterfaceDeclaration> classList) throws IOException {
         File[] files = folder.listFiles();
 
-        List<ClassOrInterfaceDeclaration> parsedClasses = new ArrayList<>();
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory()) {
                     parseFolder(file, classList);  // Recursively parse subfolders
                 } else if (file.getName().endsWith(".java")) {
-                    parsedClasses = parseJavaFile(file);
-                    for (ClassOrInterfaceDeclaration classd : parsedClasses) {
-                        classList.add(classd);
-                    }
+                    List<ClassOrInterfaceDeclaration> parsedClasses = parseJavaFile(file);
+                    classList.addAll(parsedClasses);
                 }
             }
         }
@@ -64,26 +63,20 @@ public class JavaUMLParser {
 
             if (cu != null) {
                 // Find all class declarations
-                List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);
-                return classes;
-
-            } else {
-                return (null);
+                return cu.findAll(ClassOrInterfaceDeclaration.class);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return (null);
+        return new ArrayList<>();
     }
 
     /*
-    generatePlantUMLForClass generates PlantUML readable file for the parsed data in .puml extension
+    generatePlantUMLForClass generates PlantUML-readable file for the parsed data in .puml format.
     */
     public static void generatePlantUMLForClass(ClassOrInterfaceDeclaration classDecl, FileWriter writer) throws IOException {
-        // Class name
+        // Determine whether it's a class or interface
         String className = classDecl.getNameAsString();
-
-        // Check if the class is an interface or abstract
         String classType = classDecl.isInterface() ? "interface" : (classDecl.isAbstract() ? "abstract class" : "class");
         writer.write(classType + " " + className + " {\n");
 
@@ -94,26 +87,52 @@ public class JavaUMLParser {
             }
         }
 
-        // Fields
+        List<String> processedRelationships = new ArrayList<>(); // Track processed relationships
+
+        // Fields (attributes)
         for (FieldDeclaration field : classDecl.getFields()) {
-            // Print field annotations
-            if (!field.getAnnotations().isEmpty()) {
-                for (var annotation : field.getAnnotations()) {
-                    writer.write("    @" + annotation.getNameAsString() + "\n");
-                }
-            }
             String fieldName = field.getVariables().get(0).getNameAsString();
-            String fieldType = field.getCommonType().asString();
+            String fieldType = field.getCommonType().asString(); // Get the field type
+
+            // Handle generic types like List<Class>
+            if (fieldType.contains("List") || fieldType.contains("Set") || fieldType.contains("Map")) {
+                fieldType = fieldType.replaceAll(".*<(.+)>.*", "$1");  // Extracts "Animal" from "List<Animal>"
+            }
+
+            // Print field in class body
             writer.write("    + " + fieldName + " : " + fieldType + "\n");
 
-            // Check for associations, compositions, and aggregations
-            writer.write("    " + className + " --> " + fieldType + "\n"); // Association
-            // Uncomment below if you want to differentiate between associations, compositions, or aggregations based on field names or types
-            // if (/* condition for composition */) {
-            //     writer.write("    " + className + " *-- " + fieldType + "\n"); // Composition
-            // } else if (/* condition for aggregation */) {
-            //     writer.write("    " + className + " o-- " + fieldType + "\n"); // Aggregation
-            // }
+            // Handle relationships (Composition, Aggregation, Association)
+            String relationship = null;
+            if (RelationshipDetector.isComposition(field)) {
+                relationship = className + " *-- " + fieldType;
+            } else if (RelationshipDetector.isAggregation(field)) {
+                relationship = className + " o-- " + fieldType;
+            } else if (!RelationshipDetector.isAssociation(field)) {
+                relationship = className + " --> " + fieldType;
+            }
+
+            // Only print relationships if not already processed
+            if (relationship != null && !processedRelationships.contains(relationship)) {
+                processedRelationships.add(relationship);
+            }
+        }
+
+        // parsing constructors
+        for (ConstructorDeclaration constructor : classDecl.getConstructors()) {
+            StringBuilder annotations = new StringBuilder();
+            constructor.getAnnotations().forEach(annotation -> {
+                annotations.append("@" + annotation.getNameAsString() + " ");
+            });
+
+            String constructorName = constructor.getNameAsString();
+            String constructorParams = constructor.getParameters().stream()
+                    .map(Parameter::getType)
+                    .map(Object::toString)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+
+            writer.write("    + " + annotations.toString().trim() + " " + constructorName + "(" + constructorParams + ")\n");
         }
 
         // Methods
@@ -123,8 +142,15 @@ public class JavaUMLParser {
             method.getAnnotations().forEach(annotation -> {
                 annotations.append("@" + annotation.getNameAsString() + " ");
             });
+
             String methodName = method.getNameAsString();
             String returnType = method.getType().asString();
+
+            // Handle generic return types
+            if (returnType.contains("List") || returnType.contains("Set") || returnType.contains("Map")) {
+                returnType = returnType.replaceAll(".*<(.+)>.*", "$1");  // Extracts "Animal" from "List<Animal>"
+            }
+
             writer.write("    + " + annotations.toString().trim() + " " + methodName + "() : " + returnType + "\n");
 
             // Print parameter annotations and types
@@ -134,13 +160,22 @@ public class JavaUMLParser {
                         writer.write("    @" + annotation.getNameAsString() + " " + parameter.getNameAsString() + "\n");
                     }
                 }
+
                 String paramType = parameter.getType().asString();
+                if (paramType.contains("List") || paramType.contains("Set") || paramType.contains("Map")) {
+                    paramType = paramType.replaceAll(".*<(.+)>.*", "$1");  // Extracts "Animal" from "List<Animal>"
+                }
                 writer.write("    + " + parameter.getNameAsString() + " : " + paramType + "\n");
             }
         }
 
         // Close class/interface definition
         writer.write("}\n");
+
+        // Print all relationships after fields and methods to avoid duplication
+        for (String rel : processedRelationships) {
+            writer.write(rel + "\n");
+        }
 
         // Handle inheritance and implementation (extends, implements)
         for (ClassOrInterfaceType extendedClass : classDecl.getExtendedTypes()) {
@@ -150,4 +185,5 @@ public class JavaUMLParser {
             writer.write(className + " <|.. " + implementedInterface.getNameAsString() + "\n"); // Realization
         }
     }
+
 }

@@ -1,18 +1,42 @@
 @startuml
 class PetOwner {
     + ownerName : String
-    + pet : Animal
+    + pets : Animal
+    + collar : PetCollar
+    +  PetOwner(String, Animal)
+    +  PetOwner(String, List<Animal>)
+    +  PetOwner(String, Animal, String)
     +  getOwnerName() : String
     +  setOwnerName() : void
-    +  getPet() : Animal
-    +  setPet() : void
+    + ownerName : String
+    +  getPets() : Animal
+    +  setPets() : void
+    + pets : Animal
+    + @Override showPetInfo() : void
+    + @Override feedPet() : void
+}
+PetOwner o-- Animal
+PetOwner *-- PetCollar
+PetOwner <|.. OwnerActions
+interface OwnerActions {
     +  showPetInfo() : void
+    +  feedPet() : void
+}
+class PetCollar {
+    + collarType : String
+    +  PetCollar(String)
+    +  getCollarType() : String
+    +  setCollarType() : void
+    + collarType : String
+    +  showCollarInfo() : void
 }
 class Main {
     +  main() : void
+    + args : String[]
 }
 class Manoj {
     +  main() : void
+    + args : String[]
     + @Deprecated testAnnotation() : void
 }
 class A {
@@ -24,18 +48,23 @@ class B {
 }
 B <|-- A
 class Cat {
+    +  Cat(String)
     + @Override sound() : void
 }
 Cat <|-- Animal
 class Dog {
     + breed : String
+    +  Dog(String)
+    +  Dog(String, String)
     + @Override sound() : void
     +  play() : void
     +  play() : void
+    + toy : String
 }
 Dog <|-- Animal
-class Animal {
+abstract class Animal {
     + name : String
+    +  Animal(String)
     +  sound() : void
     +  eat() : void
 }
