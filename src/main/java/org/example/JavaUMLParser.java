@@ -40,7 +40,7 @@ public class JavaUMLParser {
         }
     }
 
-    public static void parseFolder(File folder, List<ClassOrInterfaceDeclaration> classList) throws IOException {
+    public static List<ClassOrInterfaceDeclaration> parseFolder(File folder, List<ClassOrInterfaceDeclaration> classList) throws IOException {
         File[] files = folder.listFiles();
 
         if (files != null) {
@@ -53,6 +53,7 @@ public class JavaUMLParser {
                 }
             }
         }
+        return classList;
     }
 
     public static List<ClassOrInterfaceDeclaration> parseJavaFile(File javaFile) throws IOException {
@@ -78,6 +79,13 @@ public class JavaUMLParser {
         // Determine whether it's a class or interface
         String className = classDecl.getNameAsString();
         String classType = classDecl.isInterface() ? "interface" : (classDecl.isAbstract() ? "abstract class" : "class");
+
+        // Get the package name
+        String packageName = getPackageName(classDecl);
+        if (packageName != null && !packageName.isEmpty()) {
+            writer.write("package " + packageName + " {\n");
+        }
+
         writer.write(classType + " " + className + " {\n");
 
         // Print class annotations
@@ -184,6 +192,19 @@ public class JavaUMLParser {
         for (ClassOrInterfaceType implementedInterface : classDecl.getImplementedTypes()) {
             writer.write(className + " <|.. " + implementedInterface.getNameAsString() + "\n"); // Realization
         }
+
+        // Close the package block if package name exists
+        if (packageName != null && !packageName.isEmpty()) {
+            writer.write("}\n");
+        }
     }
 
+    // Method to extract the package name from the class declaration
+    public static String getPackageName(ClassOrInterfaceDeclaration classDecl) {
+        CompilationUnit cu = (CompilationUnit) classDecl.getParentNode().orElse(null);
+        if (cu != null && cu.getPackageDeclaration().isPresent()) {
+            return cu.getPackageDeclaration().get().getNameAsString();
+        }
+        return "";
+    }
 }
