@@ -22,7 +22,7 @@ public class JavaUMLParser {
         List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
 
         // Specify the folder containing Java files
-        File folder = new File("src/test/java/org/example/TestFolder");
+        File folder = new File("/Users/manojsrinivasa/Desktop/Projects/CSCI6235_JavaDocumentGenerator_2024/src");
         parseFolder(folder, classList);
 
         // Output PlantUML diagram to a file
