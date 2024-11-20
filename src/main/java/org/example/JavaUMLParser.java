@@ -2,6 +2,7 @@ package org.example;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -18,15 +19,41 @@ import java.util.List;
 
 public class JavaUMLParser {
 
-    public static void main(String[] args) throws IOException {
-        List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
+    public static void main(String args[]) throws IOException {
+//        List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
 
         // Specify the folder containing Java files
-        File folder = new File("/Users/manojsrinivasa/Desktop/Projects/CSCI6235_JavaDocumentGenerator_2024/src");
-        parseFolder(folder, classList);
+//        File folder = new File("/Users/manojsrinivasa/Desktop/Projects/CSCI6235_JavaDocumentGenerator_2024/src");
+//        File folder = new File(args[0]);
+//        parseFolder(folder, classList);
+//
+//        // Output PlantUML diagram to a file
+//        try (FileWriter writer = new FileWriter("output.puml")) {
+//            writer.write("@startuml\n");
+//
+//            // Generate PlantUML from parsed classes
+//            for (ClassOrInterfaceDeclaration classDecl : classList) {
+//                generatePlantUMLForClass(classDecl, writer);
+//            }
+//
+//            writer.write("@enduml\n");
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+    }
+
+    String starter(String path) throws IOException {
+        List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
+        File folder = new File(path);
+        File outputFile = new File("output.puml");
+        try {
+            parseFolder(folder, classList);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         // Output PlantUML diagram to a file
-        try (FileWriter writer = new FileWriter("output.puml")) {
+        try (FileWriter writer = new FileWriter(outputFile)) {
             writer.write("@startuml\n");
 
             // Generate PlantUML from parsed classes
@@ -38,6 +65,7 @@ public class JavaUMLParser {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return outputFile.getAbsolutePath();
     }
 
     public static List<ClassOrInterfaceDeclaration> parseFolder(File folder, List<ClassOrInterfaceDeclaration> classList) throws IOException {
@@ -201,10 +229,20 @@ public class JavaUMLParser {
 
     // Method to extract the package name from the class declaration
     public static String getPackageName(ClassOrInterfaceDeclaration classDecl) {
-        CompilationUnit cu = (CompilationUnit) classDecl.getParentNode().orElse(null);
-        if (cu != null && cu.getPackageDeclaration().isPresent()) {
-            return cu.getPackageDeclaration().get().getNameAsString();
+        // Traverse up the parent nodes to find the CompilationUnit
+        Node current = classDecl;
+        while (current != null && !(current instanceof CompilationUnit)) {
+            current = current.getParentNode().orElse(null);
         }
-        return "";
+
+        if (current instanceof CompilationUnit) {
+            CompilationUnit cu = (CompilationUnit) current;
+            return cu.getPackageDeclaration()
+                    .map(pd -> pd.getNameAsString())
+                    .orElse(""); // Return an empty string if no package declaration exists
+        }
+
+        return ""; // Return an empty string if CompilationUnit is not found
     }
+
 }
