@@ -28,7 +28,7 @@ public class JavaUMLParser {
 //        parseFolder(folder, classList);
 //
 //        // Output PlantUML diagram to a file
-//        try (FileWriter writer = new FileWriter("output.puml")) {
+//        try (FileWriter writer = new FileWriter("output1.puml")) {
 //            writer.write("@startuml\n");
 //
 //            // Generate PlantUML from parsed classes
