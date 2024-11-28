@@ -37,18 +37,31 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.openjfx/javafx-controls -->
+        <!-- JavaFX Controls -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>24-ea+5</version>
+            <version>21</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.openjfx/javafx-fxml -->
+
+        <!-- JavaFX FXML -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>24-ea+5</version>
+            <version>21</version>
         </dependency>
+
+            <dependency>
+                <groupId>org.apache.xmlgraphics</groupId>
+                <artifactId>batik-svgrasterizer</artifactId>
+                <version>1.16</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.xmlgraphics</groupId>
+                <artifactId>batik-transcoder</artifactId>
+                <version>1.16</version>
+            </dependency>
+
 
     </dependencies>
 
@@ -115,5 +128,10 @@
             </plugin>
         </plugins>
     </build>
-
+    <repositories>
+        <repository>
+            <id>openjfx</id>
+            <url>https://maven.central.org/repo/</url>
+        </repository>
+    </repositories>
 </project>
