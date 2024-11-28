@@ -16,9 +16,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
+
+import static org.example.Constants.CURRENT_PUML_FILE;
 
 public class JavaUMLParser {
 
+    private static final Logger logger = Logger.getLogger(JavaUMLParser.class.getName());
     public static void main(String args[]) throws IOException {
 //        List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
 
@@ -45,7 +49,7 @@ public class JavaUMLParser {
     String starter(String path) throws IOException {
         List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
         File folder = new File(path);
-        File outputFile = new File("output.puml");
+        File outputFile = new File(CURRENT_PUML_FILE);
         try {
             parseFolder(folder, classList);
         } catch (IOException e) {

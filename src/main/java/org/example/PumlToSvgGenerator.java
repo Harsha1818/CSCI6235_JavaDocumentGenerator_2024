@@ -6,9 +6,11 @@ import net.sourceforge.plantuml.FileFormatOption;
 
 import java.io.*;
 import java.nio.file.*;
-import java.awt.Desktop;
+import java.util.logging.*;
 
 public class PumlToSvgGenerator {
+
+    private static final Logger logger = Logger.getLogger(PumlToSvgGenerator.class.getName());
 
     public static void main(String[] args) throws IOException, InterruptedException {
         // Directory to monitor
@@ -18,7 +20,7 @@ public class PumlToSvgGenerator {
         WatchService watchService = FileSystems.getDefault().newWatchService();
         dirToWatch.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY);
 
-        System.out.println("Watching directory: " + dirToWatch);
+        logger.info("Watching directory: " + dirToWatch);
 
         // Create an instance of PumlToSvgGenerator
         PumlToSvgGenerator generator = new PumlToSvgGenerator();
@@ -35,7 +37,7 @@ public class PumlToSvgGenerator {
                     Path fileName = (Path) event.context();
                     if (fileName.toString().endsWith(".puml")) {
                         Path fullPath = dirToWatch.resolve(fileName);
-                        System.out.println("Processing .puml file: " + fullPath);
+                        logger.info("Processing .puml file: " + fullPath);
 
                         // Generate SVG
                         File svgFile = generator.generateSvg(fullPath.toFile());
@@ -58,7 +60,7 @@ public class PumlToSvgGenerator {
 
     // Method to generate SVG from PUML file
     public File generateSvg(File pumlFile) {
-        System.out.println("Generating SVG from PUML file: " + pumlFile.getAbsolutePath());
+        logger.info("Generating SVG from PUML file: " + pumlFile.getAbsolutePath());
         try {
             // Read PlantUML content from the .puml file
             String pumlContent = new String(Files.readAllBytes(pumlFile.toPath()));
@@ -72,10 +74,10 @@ public class PumlToSvgGenerator {
                 reader.generateImage(outputStream, new FileFormatOption(FileFormat.SVG));
             }
 
-            System.out.println("SVG file generated: " + svgFile.getAbsolutePath());
+            logger.info("SVG file generated: " + svgFile.getAbsolutePath());
             return svgFile;
         } catch (Exception e) {
-            System.err.println("Error generating SVG: " + e.getMessage());
+            logger.severe("Error generating SVG: " + e.getMessage());
             e.printStackTrace();
             return null;
         }

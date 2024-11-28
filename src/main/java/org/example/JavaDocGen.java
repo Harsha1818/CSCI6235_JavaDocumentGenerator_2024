@@ -1,26 +1,37 @@
 package org.example;
 
 import javafx.application.Application;
-import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import netscape.javascript.JSObject;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
+
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.logging.*;
+
+import static org.example.Constants.PREVIOUS_PUML_FILE;
+
+
 public class JavaDocGen extends Application {
+
+    private static final Logger logger = Logger.getLogger(JavaDocGen.class.getName());
+
 
     private WebEngine webEngine;
     private final Map<String, List<String>> entityComments = new HashMap<>();
@@ -34,7 +45,7 @@ public class JavaDocGen extends Application {
     // Add this method in your Upload class or as a separate class
     private Scene createRenderSVGScene(Stage primaryStage, String svgFilePath) {
         if (svgFilePath == null || svgFilePath.isEmpty()) {
-            System.err.println("SVG file path not provided.");
+            logger.severe("SVG file path not provided.");
             return null;
         }
 
@@ -86,7 +97,7 @@ public class JavaDocGen extends Application {
                 commentArea.clear();
                 editingCommentIndex = -1;
             } else {
-                System.out.println("No entity selected or comment is empty. Cannot save.");
+                logger.warning("No entity selected or comment is empty. Cannot save.");
             }
         });
 
@@ -97,18 +108,70 @@ public class JavaDocGen extends Application {
         // Add a "Save as Image" button
         Button saveImageButton = new Button("Save as Image");
         saveImageButton.setOnAction(event -> {
-            WritableImage snapshot = webView.snapshot(null, null);
-            BufferedImage bufferedImage = SwingFXUtils.fromFXImage(snapshot, null);
+            WebEngine webEngine = webView.getEngine();
 
             try {
-                // Save the image without the comment section or buttons
-                File outputFile = new File("scene_snapshot.jpg");
-                ImageIO.write(bufferedImage, "png", outputFile);
-                System.out.println("Scene saved as: " + outputFile.getAbsolutePath());
-            } catch (IOException e) {
-                System.err.println("Error saving the image: " + e.getMessage());
+                // Execute JavaScript to get the SVG element's content
+                String svgContent = (String) webEngine.executeScript(
+                        "document.querySelector('svg') ? document.querySelector('svg').outerHTML : null;"
+                );
+
+                if (svgContent != null) {
+                    logger.info("SVG Content fetched successfully.");
+
+                    // Save the SVG content temporarily
+                    File svgTempFile = new File("temp.svg");
+                    try (FileWriter writer = new FileWriter(svgTempFile)) {
+                        writer.write(svgContent);
+                    }
+                    logger.info("SVG saved temporarily as: " + svgTempFile.getAbsolutePath());
+
+                    // Open FileChooser for the user to select the save location and file name
+                    FileChooser fileChooser = new FileChooser();
+                    fileChooser.setTitle("Save Image As");
+                    fileChooser.getExtensionFilters().add(
+                            new FileChooser.ExtensionFilter("JPG Files", "*.JPG")
+                    );
+                    fileChooser.setInitialFileName("converted_image.JPG"); // Default name with .jpg extension
+
+                    File selectedFile = fileChooser.showSaveDialog(saveImageButton.getScene().getWindow());
+
+                    if (selectedFile != null) {
+                        // Ensure the file has the correct extension
+                        String filePath = selectedFile.getAbsolutePath();
+                        if (!filePath.endsWith(".JPG")) {
+                            filePath += ".JPG";
+                        }
+
+                        // Convert the SVG to JPG
+                        SvgToJpgConverter svgToJpgConverter = new SvgToJpgConverter();
+                        String savedJPGPath = svgToJpgConverter.convertSVGtoJPG(svgTempFile.getAbsolutePath());
+
+                        // Copy the converted JPG to the selected file
+                        Files.copy(Paths.get(savedJPGPath), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
+
+                        logger.info("Image saved as: " + filePath);
+
+                        // Cleanup temporary files
+                        svgTempFile.delete();
+                        new File(savedJPGPath).delete(); // Delete temporary JPG if needed
+                    } else {
+                        logger.warning("No file selected. Image not saved.");
+                    }
+                } else {
+                    logger.warning("No SVG element found in the WebView content.");
+                }
+            } catch (Exception e) {
+                logger.severe("Error fetching SVG content: " + e.getMessage());
+                e.printStackTrace();
             }
         });
+
+
+
+
+
+
 
         // Create a horizontal box for the top-right buttons
         HBox topRightButtons = new HBox(10, saveImageButton, backButton);
@@ -141,7 +204,7 @@ public class JavaDocGen extends Application {
     }
 
     public void handleClick(String elementId, double x, double y) {
-        System.out.println("Clicked element ID: " + elementId);
+        logger.info("Clicked element ID: " + elementId);
 
         if (entityComments.containsKey(elementId)) {
             List<String> comments = entityComments.get(elementId);
@@ -171,7 +234,7 @@ public class JavaDocGen extends Application {
                                     editingCommentIndex = selectedIndex + 1;
                                 }
                             } catch (NumberFormatException e) {
-                                System.out.println("Invalid input for comment selection.");
+                                logger.warning("Invalid input for comment selection.");
                             }
                         }
                     }
@@ -286,7 +349,7 @@ public class JavaDocGen extends Application {
         try {
             webEngine.executeScript(script);
         } catch (Exception e) {
-            System.err.println("Error executing script: " + e.getMessage());
+            logger.severe("Error executing script: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -309,7 +372,7 @@ public class JavaDocGen extends Application {
             String validationMessage = pathCheckerObj.validatePath(pathInput);
             if (validationMessage == null) {
                 errorLabel.setText("Given Path is valid!");
-                System.out.println("Given Path is valid, Path = " + pathInput);
+                logger.info("Given Path is valid, Path = " + pathInput);
                 errorLabel.setStyle("-fx-text-fill: green;");
                 JavaUMLParser umlParser = new JavaUMLParser();
                 try {
@@ -319,22 +382,22 @@ public class JavaDocGen extends Application {
                 }
 
                 // Step 2: Ensure previous.puml exists
-                File previousPumlFile = new File("previous.puml");
+                File previousPumlFile = new File(PREVIOUS_PUML_FILE);
                 if (!previousPumlFile.exists()) {
-                    System.out.println("No previous.puml found. Creating it from current.puml.");
+                    logger.warning("No previous.puml found. Creating it from current.puml.");
                     PumlEntityManager.createPreviousPuml(pumlFile);
                 }
 
                 // Step 3: Update entities and detect missing entities
-                System.out.println("Updating entities and detecting missing elements...");
+                logger.info("Updating entities and detecting missing elements...");
                 PumlEntityManager.updateEntities(pumlFile);
                 Set<String> missingEntities = PumlEntityManager.getMissingEntities();
-                System.out.println("Missing entities: " + missingEntities);
+                logger.info("Missing entities: " + missingEntities);
 
                 // Step 4: Convert .puml to .svg
                 PumlToSvgGenerator svgGenerator = new PumlToSvgGenerator();
                 File svgFile = svgGenerator.generateSvg(new File(pumlFile));
-                System.out.println("Generated SVG file: " + svgFile.getAbsolutePath());
+                logger.info("Generated SVG file: " + svgFile.getAbsolutePath());
 
                 // Transition to the Render SVG page
                 primaryStage.setScene(createRenderSVGScene(primaryStage, svgFile.getAbsolutePath()));
@@ -343,22 +406,26 @@ public class JavaDocGen extends Application {
                 errorLabel.setStyle("-fx-text-fill: red;");
             }
         });
-
-        // Set up an HBox layout for TextField and Upload button to be next to each other
+// Set up an HBox layout for TextField and Upload button to be next to each other
         HBox inputLayout = new HBox(10); // 10 px spacing between components
         inputLayout.getChildren().addAll(textField, uploadButton);
         inputLayout.setAlignment(Pos.CENTER); // Center horizontally in the HBox
+        // Ensure VBox grows with the Scene
+        HBox.setHgrow(inputLayout, Priority.ALWAYS);
 
         // Set up a VBox layout to hold the HBox and the error label
         VBox layout = new VBox(20); // 20 px spacing for better spacing in fullscreen
         layout.getChildren().addAll(inputLayout, errorLabel);
         layout.setAlignment(Pos.CENTER); // Center the children in the VBox
 
-        // Create the Scene
-        Scene scene = new Scene(layout);
+        // Ensure VBox grows with the Scene
+        VBox.setVgrow(layout, Priority.ALWAYS);
 
-        // Set Stage to fullscreen
-        primaryStage.setMaximized(true); // Maximizes the window
+        // Create the Scene
+        Scene scene = new Scene(layout, primaryStage.getWidth(), primaryStage.getHeight());
+
+        // Ensure the Stage maximizes
+        primaryStage.setMaximized(true);
 
         return scene;
     }
@@ -366,10 +433,35 @@ public class JavaDocGen extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        configureLogger();
+
+        // Example of using the logger in the main program
+        logger.info("Application started.");
         // Set the initial scene to the upload page
         primaryStage.setTitle("Java UML Generator");
         primaryStage.setScene(createUploadScene(primaryStage));
         primaryStage.show();
+    }
+
+    @Override
+    public void stop(){
+        logger.info("Main program finished.");
+    }
+
+    private static void configureLogger() {
+        try {
+            // Create a FileHandler to write logs to a file
+            FileHandler fileHandler = new FileHandler("logs.txt", true); // 'true' to append logs to the file
+            fileHandler.setFormatter(new SimpleFormatter()); // Using default formatter
+
+            // Add the handler to the logger
+            logger.addHandler(fileHandler);
+
+            // Set the level of logging
+            logger.setLevel(Level.ALL);
+        } catch (IOException e) {
+            logger.severe("Error setting up the file handler: " + e.getMessage());
+        }
     }
 
 }

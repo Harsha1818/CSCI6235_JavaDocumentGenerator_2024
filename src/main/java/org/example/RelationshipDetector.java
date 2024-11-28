@@ -2,7 +2,11 @@ package org.example;
 
 import com.github.javaparser.ast.body.FieldDeclaration;
 
+import java.util.logging.Logger;
+
 public class RelationshipDetector {
+
+    private static final Logger logger = Logger.getLogger(RelationshipDetector.class.getName());
 
     /*
     Helper method to detect if a field is a composition

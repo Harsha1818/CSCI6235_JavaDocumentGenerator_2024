@@ -3,9 +3,13 @@ package org.example;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.logging.Logger;
+
+import static org.example.Constants.PREVIOUS_PUML_FILE;
 
 public class PumlEntityManager {
-    private static final String PREVIOUS_PUML_FILE = "previous.puml"; // Stores the previous state
+    private static final Logger logger = Logger.getLogger(PumlEntityManager.class.getName());
+
     private static final Set<String> currentEntities = new HashSet<>();
     private static final Set<String> missingEntities = new HashSet<>();
 
@@ -20,10 +24,10 @@ public class PumlEntityManager {
 
             if (!previousFile.exists()) {
                 Files.copy(currentFile.toPath(), previousFile.toPath());
-                System.out.println("Created previous.puml from current.puml.");
+                logger.info("Created previous.puml from current.puml.");
             }
         } catch (IOException e) {
-            System.err.println("Error creating previous.puml: " + e.getMessage());
+            logger.severe("Error creating previous.puml: " + e.getMessage());
         }
     }
 
@@ -35,7 +39,7 @@ public class PumlEntityManager {
     public static void updateEntities(String newPumlFilePath) {
         File newPumlFile = new File(newPumlFilePath);
         if (!newPumlFile.exists()) {
-            System.err.println("New PUML file not found: " + newPumlFilePath);
+            logger.severe("New PUML file not found: " + newPumlFilePath);
             return;
         }
 
@@ -43,7 +47,7 @@ public class PumlEntityManager {
             // Ensure previous.puml exists
             File previousFile = new File(PREVIOUS_PUML_FILE);
             if (!previousFile.exists()) {
-                System.out.println("No previous.puml file found. Creating one from current.puml.");
+                logger.info("No previous.puml file found. Creating one from current.puml.");
                 createPreviousPuml(newPumlFilePath);
             }
 
@@ -60,7 +64,7 @@ public class PumlEntityManager {
             missingEntities.removeAll(currentEntities);
 
             // Log detected missing entities
-            System.out.println("Missing entities: " + missingEntities);
+            logger.info("Missing entities: " + missingEntities);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -76,7 +80,7 @@ public class PumlEntityManager {
         File pumlFile = new File(pumlFilePath);
 
         if (!pumlFile.exists()) {
-            System.err.println("Error: PUML file not found at " + pumlFilePath);
+            logger.severe("Error: PUML file not found at " + pumlFilePath);
             return entities;
         }
 
@@ -106,9 +110,9 @@ public class PumlEntityManager {
             File previousFile = new File(PREVIOUS_PUML_FILE);
 
             Files.copy(currentFile.toPath(), previousFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("Updated previous.puml with the latest content.");
+            logger.info("Updated previous.puml with the latest content.");
         } catch (IOException e) {
-            System.err.println("Error saving current.puml as previous.puml: " + e.getMessage());
+            logger.severe("Error saving current.puml as previous.puml: " + e.getMessage());
         }
     }
 
@@ -133,9 +137,9 @@ public class PumlEntityManager {
                 }
                 writer.write("end note\n");
             }
-            System.out.println("Comments saved to .puml file.");
+           logger.info("Comments saved to .puml file.");
         } catch (IOException e) {
-            System.err.println("Error saving comments to .puml file: " + e.getMessage());
+            logger.severe("Error saving comments to .puml file: " + e.getMessage());
         }
     }
 
