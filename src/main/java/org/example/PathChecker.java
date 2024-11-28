@@ -4,9 +4,12 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class PathChecker {
+
+    private static final Logger logger = Logger.getLogger(PathChecker.class.getName());
     public static void main(String args[]){
 
     }
