@@ -2,71 +2,65 @@ package org.example;
 
 import com.github.javaparser.ast.body.FieldDeclaration;
 
-import java.util.logging.Logger;
-
 public class RelationshipDetector {
 
-    private static final Logger logger = Logger.getLogger(RelationshipDetector.class.getName());
-
-    /*
-    Helper method to detect if a field is a composition
-    Composition means the contained object cannot exist without the parent.
-    */
+    // Detect if a field is a composition
     public static boolean isComposition(FieldDeclaration field) {
+        return isCustomClass(field) && field.isPrivate() && !isCollection(field);
+    }
+
+    // Detect if a field is an aggregation
+    public static boolean isAggregation(FieldDeclaration field) {
+        return isCustomClass(field) && isCollection(field);
+    }
+
+    // Detect if a field is an association
+    public static boolean isAssociation(FieldDeclaration field) {
         return isCustomClass(field) && !isCollection(field);
     }
 
-    /*
-    Helper method to detect if a field is an aggregation
-    Aggregation means the contained object can exist independently.
-    */
-    public static boolean isAggregation(FieldDeclaration field) {
-        return isCollection(field);
-    }
-
-    /*
-    Helper method to detect if a field is an association
-    Association is a simple reference between classes with no strong lifecycle binding.
-    */
-    public static boolean isAssociation(FieldDeclaration field) {
-        return isPrimitiveType(field) || isExternalReference(field);
-    }
-
-    /*
-    Utility method to check if a field is a collection
-    (which would likely represent an aggregation).
-    */
-    private static boolean isCollection(FieldDeclaration field) {
+    // Check if a field is a collection (e.g., List, Set, Map)
+    public static boolean isCollection(FieldDeclaration field) {
         String fieldType = field.getCommonType().asString();
-        return fieldType.contains("List") || fieldType.contains("Set") || fieldType.contains("Map");
+        return fieldType.contains("List") || fieldType.contains("Set") || fieldType.contains("Map")
+                || fieldType.contains("Queue") || fieldType.contains("Stack");
     }
 
-    /*
-    Utility method to check if a field is a primitive type
-    */
-    private static boolean isPrimitiveType(FieldDeclaration field) {
+    // Check if a field is a primitive type (e.g., int, String, boolean)
+    public static boolean isPrimitiveType(FieldDeclaration field) {
         String fieldType = field.getCommonType().asString();
-        return fieldType.equals("int") || fieldType.equals("double") || fieldType.equals("boolean") || fieldType.equals("char") || fieldType.equals("float")
-                || fieldType.equals("long") || fieldType.equals("byte") || fieldType.equals("short") || fieldType.equals("String");
+        return isPrimitiveType(fieldType);
     }
 
-    /*
-    Utility method to check if a field is an external reference
-    (for example, a class from standard libraries or third-party libraries).
-    */
-    private static boolean isExternalReference(FieldDeclaration field) {
-        String fieldType = field.getCommonType().asString();
-        // Check if the field type belongs to a common external package (like java.lang or other libraries).
-        return fieldType.startsWith("java.") || fieldType.startsWith("javax.") || fieldType.equals("String");
+    // Overload: Check if a type is a primitive type (String input)
+    public static boolean isPrimitiveType(String fieldType) {
+        return fieldType.equals("int") || fieldType.equals("double") || fieldType.equals("boolean")
+                || fieldType.equals("char") || fieldType.equals("float") || fieldType.equals("long")
+                || fieldType.equals("byte") || fieldType.equals("short") || fieldType.equals("String");
     }
 
-    /*
-    Utility method to check if a field is a custom class
-    (i.e., belongs to the user's project and not external libraries).
-    */
-    private static boolean isCustomClass(FieldDeclaration field) {
+    // Check if a field is an external reference (e.g., java.lang, javax, javafx)
+    public static boolean isExternalReference(FieldDeclaration field) {
         String fieldType = field.getCommonType().asString();
-        // Assuming custom classes are within the project namespace (adjust this based on your project)
-        return !isPrimitiveType(field) && !isExternalReference(field);
+        return isExternalReference(fieldType);
+    }
+
+    // Overload: Check if a type is an external reference (String input)
+    public static boolean isExternalReference(String fieldType) {
+        return fieldType.startsWith("java.") || fieldType.startsWith("javax.") || fieldType.startsWith("javafx.")
+                || fieldType.equals("Object");
+    }
+
+    // Check if a field is a custom class (i.e., defined by the user)
+    public static boolean isCustomClass(FieldDeclaration field) {
+        String fieldType = field.getCommonType().asString();
+
+        return isCustomClass(fieldType);
+    }
+
+    // Overload: Check if a type is a custom class (String input)
+    public static boolean isCustomClass(String fieldType) {
+        return !isPrimitiveType(fieldType) && !isExternalReference(fieldType)
+                && Character.isUpperCase(fieldType.charAt(0));
     }
 }

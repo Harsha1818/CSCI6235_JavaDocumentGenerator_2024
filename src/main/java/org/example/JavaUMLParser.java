@@ -15,20 +15,22 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Logger;
 
 import static org.example.Constants.CURRENT_PUML_FILE;
+import java.util.Set;
 
 public class JavaUMLParser {
 
     private static final Logger logger = Logger.getLogger(JavaUMLParser.class.getName());
     public static void main(String args[]) throws IOException {
 //        List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
-
-        // Specify the folder containing Java files
-//        File folder = new File("/Users/manojsrinivasa/Desktop/Projects/CSCI6235_JavaDocumentGenerator_2024/src");
-//        File folder = new File(args[0]);
+//
+//        // Specify the folder containing Java files
+//        File folder = new File("/Users/sarvanthvedula/Documents/3rd sem MS/component based/project/CSCI6235_JavaDocumentGenerator_2024/src/test/java/org/example/TestFolder");
+//        // File folder = new File(args[0]);
 //        parseFolder(folder, classList);
 //
 //        // Output PlantUML diagram to a file
@@ -37,7 +39,8 @@ public class JavaUMLParser {
 //
 //            // Generate PlantUML from parsed classes
 //            for (ClassOrInterfaceDeclaration classDecl : classList) {
-//                generatePlantUMLForClass(classDecl, writer);
+//                CompilationUnit cu = getCompilationUnitForClass(classDecl);
+//                generatePlantUMLForClass(classDecl, writer, cu);
 //            }
 //
 //            writer.write("@enduml\n");
@@ -49,6 +52,7 @@ public class JavaUMLParser {
     String starter(String path) throws IOException {
         List<ClassOrInterfaceDeclaration> classList = new ArrayList<>();
         File folder = new File(path);
+
         File outputFile = new File(CURRENT_PUML_FILE);
         try {
             parseFolder(folder, classList);
@@ -62,7 +66,8 @@ public class JavaUMLParser {
 
             // Generate PlantUML from parsed classes
             for (ClassOrInterfaceDeclaration classDecl : classList) {
-                generatePlantUMLForClass(classDecl, writer);
+                CompilationUnit cu = getCompilationUnitForClass(classDecl);
+                generatePlantUMLForClass(classDecl, writer, cu);
             }
 
             writer.write("@enduml\n");
@@ -104,21 +109,43 @@ public class JavaUMLParser {
         return new ArrayList<>();
     }
 
+    public static CompilationUnit getCompilationUnitForClass(ClassOrInterfaceDeclaration classDecl) {
+        Node current = classDecl;
+        while (current != null && !(current instanceof CompilationUnit)) {
+            current = current.getParentNode().orElse(null);
+        }
+        return (CompilationUnit) current;
+    }
+
     /*
     generatePlantUMLForClass generates PlantUML-readable file for the parsed data in .puml format.
     */
-    public static void generatePlantUMLForClass(ClassOrInterfaceDeclaration classDecl, FileWriter writer) throws IOException {
-        // Determine whether it's a class or interface
+    public static void generatePlantUMLForClass(ClassOrInterfaceDeclaration classDecl, FileWriter writer, CompilationUnit cu) throws IOException {
+
+        // Determine whether it's a class, interface, or abstract class
         String className = classDecl.getNameAsString();
         String classType = classDecl.isInterface() ? "interface" : (classDecl.isAbstract() ? "abstract class" : "class");
 
         // Get the package name
+        Set<String> printedPackages = new HashSet<>();
         String packageName = getPackageName(classDecl);
-        if (packageName != null && !packageName.isEmpty()) {
+        if (!packageName.isEmpty() && !printedPackages.contains(packageName)) {
             writer.write("package " + packageName + " {\n");
+            printedPackages.add(packageName);
         }
 
         writer.write(classType + " " + className + " {\n");
+        // Include import statements as class attributes
+        if (cu != null) {
+            Set<String> processedImports = new HashSet<>();
+            for (var importDecl : cu.getImports()) {
+                String importName = importDecl.getNameAsString();
+                if (!processedImports.contains(importName)) {
+                    writer.write("    + @import " + importName + "\n");
+                    processedImports.add(importName);
+                }
+            }
+        }
 
         // Print class annotations
         if (!classDecl.getAnnotations().isEmpty()) {
@@ -128,37 +155,34 @@ public class JavaUMLParser {
         }
 
         List<String> processedRelationships = new ArrayList<>(); // Track processed relationships
+        Set<String> processedFields = new HashSet<>();
 
         // Fields (attributes)
         for (FieldDeclaration field : classDecl.getFields()) {
             String fieldName = field.getVariables().get(0).getNameAsString();
-            String fieldType = field.getCommonType().asString(); // Get the field type
+            String fieldType = sanitizeGenericType(field.getCommonType().asString()); // Sanitize field type
 
-            // Handle generic types like List<Class>
-            if (fieldType.contains("List") || fieldType.contains("Set") || fieldType.contains("Map")) {
-                fieldType = fieldType.replaceAll(".*<(.+)>.*", "$1");  // Extracts "Animal" from "List<Animal>"
-            }
+            if (!processedFields.contains(fieldName)) {
+                processedFields.add(fieldName);
+                writer.write("    + " + fieldName + " : " + fieldType + "\n");
 
-            // Print field in class body
-            writer.write("    + " + fieldName + " : " + fieldType + "\n");
+                // Determine relationships
+                String relationship = null;
+                if (RelationshipDetector.isComposition(field)) {
+                    relationship = className + " *-- " + fieldType;
+                } else if (RelationshipDetector.isAggregation(field)) {
+                    relationship = className + " o-- " + fieldType;
+                } else if (RelationshipDetector.isAssociation(field)) {
+                    relationship = className + " --> " + fieldType;
+                }
 
-            // Handle relationships (Composition, Aggregation, Association)
-            String relationship = null;
-            if (RelationshipDetector.isComposition(field)) {
-                relationship = className + " *-- " + fieldType;
-            } else if (RelationshipDetector.isAggregation(field)) {
-                relationship = className + " o-- " + fieldType;
-            } else if (!RelationshipDetector.isAssociation(field)) {
-                relationship = className + " --> " + fieldType;
-            }
-
-            // Only print relationships if not already processed
-            if (relationship != null && !processedRelationships.contains(relationship)) {
-                processedRelationships.add(relationship);
+                if (relationship != null && !processedRelationships.contains(relationship)) {
+                    processedRelationships.add(relationship);
+                }
             }
         }
 
-        // parsing constructors
+        // Parsing constructors
         for (ConstructorDeclaration constructor : classDecl.getConstructors()) {
             StringBuilder annotations = new StringBuilder();
             constructor.getAnnotations().forEach(annotation -> {
@@ -167,8 +191,7 @@ public class JavaUMLParser {
 
             String constructorName = constructor.getNameAsString();
             String constructorParams = constructor.getParameters().stream()
-                    .map(Parameter::getType)
-                    .map(Object::toString)
+                    .map(parameter -> sanitizeGenericType(parameter.getType().asString())) // Sanitize parameter types
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
 
@@ -176,56 +199,66 @@ public class JavaUMLParser {
         }
 
         // Methods
+        Set<String> processedMethods = new HashSet<>();
         for (MethodDeclaration method : classDecl.getMethods()) {
-            // Print method annotations
             StringBuilder annotations = new StringBuilder();
             method.getAnnotations().forEach(annotation -> {
                 annotations.append("@" + annotation.getNameAsString() + " ");
             });
 
             String methodName = method.getNameAsString();
-            String returnType = method.getType().asString();
+            String returnType = sanitizeGenericType(method.getType().asString()); // Sanitize return type
 
-            // Handle generic return types
-            if (returnType.contains("List") || returnType.contains("Set") || returnType.contains("Map")) {
-                returnType = returnType.replaceAll(".*<(.+)>.*", "$1");  // Extracts "Animal" from "List<Animal>"
-            }
+            // Handle method parameters
+            List<String> paramTypes = new ArrayList<>();
+            for (Parameter param : method.getParameters()) {
+                String paramType = sanitizeGenericType(param.getType().asString());
+                paramTypes.add(paramType);
 
-            writer.write("    + " + annotations.toString().trim() + " " + methodName + "() : " + returnType + "\n");
+                if (RelationshipDetector.isCustomClass(param.getType().asString())) {
+                    String relationship = className + " --> " + paramType;
 
-            // Print parameter annotations and types
-            for (Parameter parameter : method.getParameters()) {
-                if (!parameter.getAnnotations().isEmpty()) {
-                    for (var annotation : parameter.getAnnotations()) {
-                        writer.write("    @" + annotation.getNameAsString() + " " + parameter.getNameAsString() + "\n");
+                    // Avoid duplicate relationships if already defined by fields
+                    if (!processedRelationships.contains(relationship) &&
+                            !processedRelationships.stream().anyMatch(rel -> rel.contains(paramType))) {
+                        processedRelationships.add(relationship);
                     }
                 }
 
-                String paramType = parameter.getType().asString();
-                if (paramType.contains("List") || paramType.contains("Set") || paramType.contains("Map")) {
-                    paramType = paramType.replaceAll(".*<(.+)>.*", "$1");  // Extracts "Animal" from "List<Animal>"
-                }
-                writer.write("    + " + parameter.getNameAsString() + " : " + paramType + "\n");
             }
+
+            // Construct method signature
+            String methodSignature = methodName + "(" + String.join(", ", paramTypes) + ")";
+
+            // Avoid duplicate methods
+            if (processedMethods.contains(methodSignature)) {
+                continue;
+            }
+            processedMethods.add(methodSignature);
+
+            // Print the method
+            writer.write("    + " + annotations.toString().trim() + " " + methodSignature + " : " + returnType + "\n");
         }
 
-        // Close class/interface definition
+
+        // Close class definition
         writer.write("}\n");
 
-        // Print all relationships after fields and methods to avoid duplication
+        // Print all relationships after fields and methods
         for (String rel : processedRelationships) {
             writer.write(rel + "\n");
         }
 
         // Handle inheritance and implementation (extends, implements)
         for (ClassOrInterfaceType extendedClass : classDecl.getExtendedTypes()) {
-            writer.write(className + " <|-- " + extendedClass.getNameAsString() + "\n"); // Inheritance
-        }
-        for (ClassOrInterfaceType implementedInterface : classDecl.getImplementedTypes()) {
-            writer.write(className + " <|.. " + implementedInterface.getNameAsString() + "\n"); // Realization
+            writer.write(className + " <|-- " + extendedClass.getNameAsString() + "\n");
         }
 
-        // Close the package block if package name exists
+        for (ClassOrInterfaceType implementedInterface : classDecl.getImplementedTypes()) {
+            writer.write(className + " <|.. " + implementedInterface.getNameAsString() + "\n");
+        }
+
+        // Close package block
         if (packageName != null && !packageName.isEmpty()) {
             writer.write("}\n");
         }
@@ -249,4 +282,10 @@ public class JavaUMLParser {
         return ""; // Return an empty string if CompilationUnit is not found
     }
 
+    private static String sanitizeGenericType(String type) {
+        if (type.contains("<")) {
+            type = type.replaceAll(".*<(.+?)>.*", "$1"); // Extract generic type (e.g., Animal)
+        }
+        return type.replace("[]", "Array").replace("<", "").replace(">", "").trim(); // Remove brackets
+    }
 }
