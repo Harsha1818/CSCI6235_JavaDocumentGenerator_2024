@@ -54,6 +54,7 @@ public class RelationshipDetector {
     // Check if a field is a custom class (i.e., defined by the user)
     public static boolean isCustomClass(FieldDeclaration field) {
         String fieldType = field.getCommonType().asString();
+
         return isCustomClass(fieldType);
     }
 
